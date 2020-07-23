@@ -1,3 +1,5 @@
+import re
+
 import requests
 import http.cookiejar as cookielib
 import xlwt
@@ -89,20 +91,20 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
         price = item_soup.find('input', {'id': 'it_price'}).get('value')
         prices.append(price)
 
-        '''
-        filename = img_url.split("/")[-1]
-        new_filename = code + '.' + filename.split(".")[-1]
-        urllib.request.urlretrieve(img_url, new_filename)
+        img_urls.append('catalog/product/gomaps/' + new_filename)
 
-        img_urls.append('catalog/product/nippon/' + new_filename)
+        title = item_soup.find('h2', {'id': 'sit_title'}).find(text=True, recursive=False)
 
-        name = product_meta_content.find('h3', {'class': 'product-title'}).get_text()
-        names.append(name)
-        chinese_name = translate_to_chinese(name)
-        chinese_names.append(chinese_name)
-        korean_name = translate_to_korean(name)
+        korean_name = re.findall(r'(.*?)\(.*?\)', title)[0]
         korean_names.append(korean_name)
 
+        name = title[title.find("(") + 1:title.find(")")]
+        names.append(name)
+
+        chinese_name = translate_to_chinese(name)
+        chinese_names.append(chinese_name)
+
+        '''
         detail = item.find('div', {'class': 'product_short_content'}).get_text()
         details.append(detail)
         chinese_detail = translate_to_chinese(detail)
@@ -110,13 +112,16 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
         korean_detail = translate_to_korean(detail)
         korean_details.append(korean_detail)
 
-
-
         category_names.append(get_category(key))
 
         print(
             new_filename + ', ' + code + ', ' + name + ', ' + chinese_name + ', ' + korean_name + ', ' + detail + ', ' + chinese_detail + ', ' + korean_detail + ', ' + price + ', ' + key)
 '''
+
+def get_sub_category_pages(data):
+    soup = BeautifulSoup(data.text, 'lxml')
+    pages = soup.find('a', {'class': 'pg_end'}).get('href').split('=')[-1]
+    return int(pages)
 
 
 def parse_homepage_data(data):
@@ -239,6 +244,7 @@ def get_category(category):
     return '34'
 
 
+
 def run():
     img_urls = []
     codes = []
@@ -257,11 +263,16 @@ def run():
     category_map = parse_homepage_data(homepage_data)
 
     for key, value in category_map.items():
+        # category_data is fist page of that category
         category_data = get_data_by_category(session, domain_name + value)
-        parse_sub_category_data(session,
-                                category_data, key, img_urls, codes, names, chinese_names, korean_names, details,
-                                chinese_details,
-                                korean_details, prices, category_names)
+        pages = get_sub_category_pages(category_data)
+        for i in range(pages):
+            category_data = get_data_by_category(session, domain_name + value + "&page=" + str(i+1))
+            parse_sub_category_data(session,
+                                    category_data, key, img_urls, codes, names, chinese_names, korean_names, details,
+                                    chinese_details,
+                                    korean_details, prices, category_names)
+
     save_data(img_urls, codes, names, chinese_names, korean_names, details, chinese_details, korean_details,
               prices, category_names)
 
