@@ -49,19 +49,29 @@ def get_data_homepage(homepage_url):
     return data, session
 
 
-def translate_to_chinese(text):
+def translate_english_to_chinese(text):
     if text == '':
         return ''
     else:
         return translator.translate(text, src='en', dest='zh-cn').text
 
+def translate_korean_to_chinese(text):
+    if text == '':
+        return ''
+    else:
+        return translator.translate(text, src='ko', dest='zh-cn').text
 
-def translate_to_korean(text):
+def translate_english_to_korean(text):
     if text == '':
         return ''
     else:
         return translator.translate(text, src='en', dest='ko').text
 
+def translate_korean_to_english(text):
+    if text == '':
+        return ''
+    else:
+        return translator.translate(text, src='ko', dest='en').text
 
 # 解析数据
 def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_names, korean_names, details,
@@ -86,41 +96,99 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
 
         filename = img_url.split("/")[-1]
         new_filename = code + '.' + filename.split(".")[-1]
-        urllib.request.urlretrieve(img_url, new_filename)
+        #urllib.request.urlretrieve(img_url, new_filename)
 
         price = item_soup.find('input', {'id': 'it_price'}).get('value')
-        prices.append(price)
+        prices.append('$' + price)
 
         img_urls.append('catalog/product/gomaps/' + new_filename)
 
         title = item_soup.find('h2', {'id': 'sit_title'}).find(text=True, recursive=False)
 
-        korean_name = re.findall(r'(.*?)\(.*?\)', title)[0]
-        korean_names.append(korean_name)
+        if len(re.findall(r'(.*?)\(.*?\)', title)) == 0:
+            korean_name = title
+            korean_names.append(korean_name)
+            name = translate_korean_to_english(korean_name)
+            names.append(name)
+            chinese_name = translate_korean_to_chinese(name)
+            chinese_names.append(chinese_name)
+        else:
+            korean_name = re.findall(r'(.*?)\(.*?\)', title)[0]
+            korean_names.append(korean_name)
+            name = title[title.rfind("(") + 1:title.rfind(")")]
+            names.append(name)
+            chinese_name = translate_english_to_chinese(name)
+            chinese_names.append(chinese_name)
 
-        name = title[title.find("(") + 1:title.find(")")]
-        names.append(name)
 
-        chinese_name = translate_to_chinese(name)
-        chinese_names.append(chinese_name)
+        if item_soup.find('div', {'id': 'sit_inf_explan'}):
+            description = item_soup.find('div', {'id': 'sit_inf_explan'}).get_text()
+            if len(get_korean(description)) != 0:
+                last_korean_letter = get_korean(description)[-1]
+                last_korean_letter_index = description.rfind(last_korean_letter)
+                korean_detail = description[0: last_korean_letter_index + 2]
+                korean_details.append(korean_detail)
 
-        '''
-        detail = item.find('div', {'class': 'product_short_content'}).get_text()
-        details.append(detail)
-        chinese_detail = translate_to_chinese(detail)
-        chinese_details.append(chinese_detail)
-        korean_detail = translate_to_korean(detail)
-        korean_details.append(korean_detail)
+                chinese_detail = translate_korean_to_chinese(korean_detail)
+                chinese_details.append(chinese_detail)
+
+                detail = translate_korean_to_english(korean_detail)
+                details.append(detail)
+            else:
+                detail = ''
+                details.append(detail)
+                chinese_detail = ''
+                chinese_details.append(chinese_detail)
+                korean_detail = ''
+                korean_details.append(korean_detail)
+
+            #detail = description[last_korean_letter_index + 2:]
+            #details.append(detail)
+            #if detail != '':
+                #chinese_detail = translate_to_chinese(detail)
+                #chinese_details.append(chinese_detail)
+            #else:
+                #chinese_detail = translate_to_chinese(korean_detail)
+                #chinese_details.append(chinese_detail)
+                #detail = translate_to_english(korean_detail)
+                #details.append(detail)
+        else:
+            detail = ''
+            details.append(detail)
+            chinese_detail = ''
+            chinese_details.append(chinese_detail)
+            korean_detail = ''
+            korean_details.append(korean_detail)
 
         category_names.append(get_category(key))
 
         print(
-            new_filename + ', ' + code + ', ' + name + ', ' + chinese_name + ', ' + korean_name + ', ' + detail + ', ' + chinese_detail + ', ' + korean_detail + ', ' + price + ', ' + key)
-'''
+            'catalog/product/gomaps/' + new_filename + '| ' + code + '| ' + name + '| ' + chinese_name + '| ' +
+            korean_name + '{ ' + detail + '| ' +
+            chinese_detail + '| ' + korean_detail + '}' + '$' + price + '| ' + key)
+
+
+def get_korean(texts):
+    # korean
+    return re.findall("[\uac00-\ud7a3]", texts)
+
+
+def get_chinese(texts):
+    # chinese
+    return re.findall("[\u4e00-\u9FFF ]", texts)
+
+
+def get_english(texts):
+    # chinese
+    return re.findall("[a-zA-Z ]", texts)
+
 
 def get_sub_category_pages(data):
     soup = BeautifulSoup(data.text, 'lxml')
-    pages = soup.find('a', {'class': 'pg_end'}).get('href').split('=')[-1]
+    if not soup.find('a', {'class': 'pg_end'}):
+        pages = soup.find('a', {'class': 'pg_end'}).get('href').split('=')[-1]
+    else:
+        pages = 1
     return int(pages)
 
 
@@ -148,12 +216,12 @@ def append_to_list(write_list, pk, english, korean, chinese, image, category, co
 
 def save_data(img_urls, codes, names, chinese_names, korean_names, details, chinese_details, korean_details, prices,
               category_names):
-    start = 4000
+    start = 6000
     write_list = []
     for i in range(len(img_urls)):
         index = start + i
         line = [index, names[i], korean_names[i], chinese_names[i], category_names[i], '', codes[i], '',
-                '', '', '', '', 10, codes[i], 'nippon', img_urls[i], 'yes', round(float(prices[i]) * 1.35, 1), 0,
+                '', '', '', '', 10, codes[i], 'gomaps', img_urls[i], 'yes', round(float(prices[i]) * 1.35, 1), 0,
                 '2020-06-24 00:00:00',
                 '2020-06-24 00:00:00', '2020-06-24', 0, 'g', 0, 0, 0, 'cm', 'true', 0, details[i], korean_details[i],
                 chinese_details[i], names[i], korean_names[i], chinese_names[i],
@@ -175,74 +243,96 @@ def write_to_excel(file='result.xls', list=[]):
     book.save(file)  # 创建保存文件
 
 
+'''
+'RICE', 'NOODLE', 'SOY SAUCE｜PASTE', 'SALT', 'OIL', 'SAUCE', 'SUGAR', 'SOURNESS', 'SEASONING', 'INSTANT FOOD', 
+'FROZEN DUMPLING', 'FROZEN FOOD', 'SEAWEED', 'FROZEN SEAFOOD', 'RED PEPPER POWDER', 'PROCESSED FLOUR', 'GRAINS FLOUR',
+'PREMIX', 'OTHER POWDER', 'POWDER', 'DRIED SEAFOOD', 'DRIED VEGETABLES', 'DRIED SEED', 'FROZEN SIDE DISH', 'PICKLED',
+'KITCHEN', 'CONTAINER', 'OTHER SUNDRIE', 'CAN', 'BOTTLE', 'COFFEE / TEA', 'OTHER DRINK', 'VEGETABLE', 'FRUIT'])
+'''
+
+
 def get_category(category):
-    noodle = ['Noodle']
+    noodle = ['NOODLE']
     for s in noodle:
         if s in category:
             return '43,34'
 
-    candy = ['Confectionery']
-    for s in candy:
-        if s in category:
-            return '50,34'
-
-    seaweed = ['Seaweed']
+    seaweed = ['SEAWEED']
     for s in seaweed:
         if s in category:
             return '53,34'
 
-    frozen = ['Frozen']
-    for s in frozen:
+    dry = ['DRIED SEAFOOD', 'DRIED VEGETABLES', 'DRIED SEED']
+    for s in dry:
         if s in category:
-            return '72,20'
+            return '39,34'
 
-    houseware = ['Houseware']
+    houseware = ['KITCHEN', 'CONTAINER', 'OTHER SUNDRIE']
     for s in houseware:
         if s in category:
             return '78,33'
 
-    drink = ['Beverage']
+    drink = ['CAN', 'BOTTLE', 'OTHER DRINK']
     for s in drink:
         if s in category:
             return '46,18'
 
-    sauce = ['Sauce & Seasoning']
+    coffee_tea = ['COFFEE / TEA']
+    for s in coffee_tea:
+        if s in category:
+            return '45,18'
+
+    kimchi = ['PICKLED']
+    for s in kimchi:
+        if s in category:
+            return '30,25'
+
+    sauce = ['SOY SAUCE｜PASTE', 'SAUCE', 'SOURNESS', 'SEASONING']
     for s in sauce:
         if s in category:
             return '38,34'
 
-    liquor = ['Japanese Liquor']
-    for s in liquor:
+    seasoning = ['SALT', 'OIL', 'SUGAR', 'RED PEPPER POWDER', 'PREMIX', 'OTHER POWDER', 'POWDER']
+    for s in seasoning:
         if s in category:
-            return '79,18'
+            return '37,34'
 
-    flour = ['Flour']
+    vege = ['VEGETABLE', 'FRUIT']
+    for s in vege:
+        if s in category:
+            return '28,25'
+
+    flour = ['PROCESSED FLOUR', 'GRAINS FLOUR']
     for s in flour:
         if s in category:
             return '56,34'
 
-    instant_food = ['Instant']
+    instant_food = ['INSTANT FOOD']
     for s in instant_food:
         if s in category:
             return '48,34'
 
-    rice = ['Rice']
+    rice = ['RICE']
     for s in rice:
         if s in category:
             return '55,34'
 
-    seasoning = ['Soup Stock']
-    for s in seasoning:
+    frozen_dumpling = ['FROZEN DUMPLING']
+    for s in frozen_dumpling:
         if s in category:
-            return '38,34'
+            return '71,20'
 
-    other = ['Other']
-    for s in other:
+    frozen_fish = ['FROZEN SEAFOOD']
+    for s in frozen_fish:
         if s in category:
-            return '34'
+            return '27,20'
+
+    frozen_others = ['FROZEN FOOD', 'FROZEN SIDE DISH']
+    for s in frozen_others:
+        if s in category:
+            return '72,20'
 
     return '34'
-
 
 
 def run():
@@ -267,7 +357,7 @@ def run():
         category_data = get_data_by_category(session, domain_name + value)
         pages = get_sub_category_pages(category_data)
         for i in range(pages):
-            category_data = get_data_by_category(session, domain_name + value + "&page=" + str(i+1))
+            category_data = get_data_by_category(session, domain_name + value + "&page=" + str(i + 1))
             parse_sub_category_data(session,
                                     category_data, key, img_urls, codes, names, chinese_names, korean_names, details,
                                     chinese_details,
