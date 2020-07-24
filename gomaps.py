@@ -55,11 +55,13 @@ def translate_english_to_chinese(text):
     else:
         return translator.translate(text, src='en', dest='zh-cn').text
 
+
 def translate_korean_to_chinese(text):
     if text == '':
         return ''
     else:
         return translator.translate(text, src='ko', dest='zh-cn').text
+
 
 def translate_english_to_korean(text):
     if text == '':
@@ -67,11 +69,13 @@ def translate_english_to_korean(text):
     else:
         return translator.translate(text, src='en', dest='ko').text
 
+
 def translate_korean_to_english(text):
     if text == '':
         return ''
     else:
         return translator.translate(text, src='ko', dest='en').text
+
 
 # 解析数据
 def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_names, korean_names, details,
@@ -96,7 +100,7 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
 
         filename = img_url.split("/")[-1]
         new_filename = code + '.' + filename.split(".")[-1]
-        #urllib.request.urlretrieve(img_url, new_filename)
+        # urllib.request.urlretrieve(img_url, new_filename)
 
         price = item_soup.find('input', {'id': 'it_price'}).get('value')
         prices.append('$' + price)
@@ -120,7 +124,6 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
             chinese_name = translate_english_to_chinese(name)
             chinese_names.append(chinese_name)
 
-
         if item_soup.find('div', {'id': 'sit_inf_explan'}):
             description = item_soup.find('div', {'id': 'sit_inf_explan'}).get_text()
             if len(get_korean(description)) != 0:
@@ -141,17 +144,6 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
                 chinese_details.append(chinese_detail)
                 korean_detail = ''
                 korean_details.append(korean_detail)
-
-            #detail = description[last_korean_letter_index + 2:]
-            #details.append(detail)
-            #if detail != '':
-                #chinese_detail = translate_to_chinese(detail)
-                #chinese_details.append(chinese_detail)
-            #else:
-                #chinese_detail = translate_to_chinese(korean_detail)
-                #chinese_details.append(chinese_detail)
-                #detail = translate_to_english(korean_detail)
-                #details.append(detail)
         else:
             detail = ''
             details.append(detail)
@@ -185,7 +177,7 @@ def get_english(texts):
 
 def get_sub_category_pages(data):
     soup = BeautifulSoup(data.text, 'lxml')
-    if not soup.find('a', {'class': 'pg_end'}):
+    if soup.find('a', {'class': 'pg_end'}):
         pages = soup.find('a', {'class': 'pg_end'}).get('href').split('=')[-1]
     else:
         pages = 1
