@@ -122,10 +122,12 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
             chinese_name = translate_korean_to_chinese(korean_name)
             chinese_names.append(chinese_name)
         else:
-            korean_name = re.findall(r'(.*?)\(.*?\)', title)[0]
+            korean_name = re.sub("[\(\[].*?[\)\]]", "", title)
             korean_names.append(korean_name)
             name = title[title.rfind("(") + 1:title.rfind(")")]
-            if hasNumbers(name) or len(name) < 3 or len(get_korean(name)) > 0:
+            if hasNumbers(name) or len(name) < 3 or len(get_korean(name)) > 0 or name == 'WHOLE' or name == 'PET' or name == 'BQF':
+                if len(get_korean(name)) > 0:
+                    korean_name = korean_name + '(' + name + ')'
                 name = translate_korean_to_english(korean_name)
                 names.append(name)
                 chinese_name = translate_korean_to_chinese(korean_name)
@@ -228,9 +230,12 @@ def save_data(img_urls, codes, names, chinese_names, korean_names, details, chin
     start = 6000
     write_list = []
     for i in range(len(img_urls)):
+        code = codes[i]
+        if code.isdecimal():
+            code = int(code)
         index = start + i
-        line = [index, names[i], korean_names[i], chinese_names[i], category_names[i], '', codes[i], '',
-                '', '', '', '', 10, codes[i], 'gomaps', img_urls[i], 'yes', round(float(prices[i]) * 1.35, 1), 0,
+        line = [index, names[i], korean_names[i], chinese_names[i], category_names[i], '', code, '',
+                '', '', '', '', 10, code, 'gomaps', img_urls[i], 'yes', round(float(prices[i]) * 1.35, 1), 0,
                 '2020-06-24 00:00:00',
                 '2020-06-24 00:00:00', '2020-06-24', 0, 'g', 0, 0, 0, 'cm', 'true', 0, details[i], korean_details[i],
                 chinese_details[i], names[i], korean_names[i], chinese_names[i],
