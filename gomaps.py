@@ -76,6 +76,8 @@ def translate_korean_to_english(text):
     else:
         return translator.translate(text, src='ko', dest='en').text
 
+def hasNumbers(input_string):
+  return any(char.isdigit() for char in input_string)
 
 # 解析数据
 def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_names, korean_names, details,
@@ -103,7 +105,10 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
         # urllib.request.urlretrieve(img_url, new_filename)
 
         price = item_soup.find('input', {'id': 'it_price'}).get('value')
-        prices.append('$' + price)
+        if price.isdecimal():
+            prices.append(price)
+        else:
+            prices.append('0')
 
         img_urls.append('catalog/product/gomaps/' + new_filename)
 
@@ -114,15 +119,21 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
             korean_names.append(korean_name)
             name = translate_korean_to_english(korean_name)
             names.append(name)
-            chinese_name = translate_korean_to_chinese(name)
+            chinese_name = translate_korean_to_chinese(korean_name)
             chinese_names.append(chinese_name)
         else:
             korean_name = re.findall(r'(.*?)\(.*?\)', title)[0]
             korean_names.append(korean_name)
             name = title[title.rfind("(") + 1:title.rfind(")")]
-            names.append(name)
-            chinese_name = translate_english_to_chinese(name)
-            chinese_names.append(chinese_name)
+            if hasNumbers(name) or len(name) < 3 or len(get_korean(name)) > 0:
+                name = translate_korean_to_english(korean_name)
+                names.append(name)
+                chinese_name = translate_korean_to_chinese(korean_name)
+                chinese_names.append(chinese_name)
+            else:
+                names.append(name)
+                chinese_name = translate_english_to_chinese(name)
+                chinese_names.append(chinese_name)
 
         if item_soup.find('div', {'id': 'sit_inf_explan'}):
             description = item_soup.find('div', {'id': 'sit_inf_explan'}).get_text()
@@ -135,8 +146,14 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
                 chinese_detail = translate_korean_to_chinese(korean_detail)
                 chinese_details.append(chinese_detail)
 
-                detail = translate_korean_to_english(korean_detail)
-                details.append(detail)
+                detail = "".join(get_english(description)).strip()
+                if len(detail.replace(' ', '').replace('kg', '').replace('g', '').replace('mg', '').replace('kcal', '')
+                       .replace('m', '')) > 5:
+                    detail = description[last_korean_letter_index + 2:]
+                    details.append(detail)
+                else:
+                    detail = translate_korean_to_english(korean_detail)
+                    details.append(detail)
             else:
                 detail = ''
                 details.append(detail)
