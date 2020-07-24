@@ -116,27 +116,27 @@ def parse_sub_category_data(session, data, key, img_urls, codes, names, chinese_
         title = item_soup.find('h2', {'id': 'sit_title'}).find(text=True, recursive=False)
 
         if len(re.findall(r'(.*?)\(.*?\)', title)) == 0:
-            korean_name = title + ' ' + spec
-            korean_names.append(korean_name)
-            name = translate_korean_to_english(korean_name) + ' ' + spec
-            names.append(name)
-            chinese_name = translate_korean_to_chinese(korean_name) + ' ' + spec
-            chinese_names.append(chinese_name)
+            korean_name = title
+            korean_names.append(korean_name + ' ' + spec)
+            name = translate_korean_to_english(korean_name)
+            names.append(name + ' ' + spec)
+            chinese_name = translate_korean_to_chinese(korean_name)
+            chinese_names.append(chinese_name + ' ' + spec)
         else:
-            korean_name = re.sub("[\(\[].*?[\)\]]", "", title) + ' ' + spec
-            korean_names.append(korean_name)
+            korean_name = re.sub("[\(\[].*?[\)\]]", "", title)
+            korean_names.append(korean_name + ' ' + spec)
             name = title[title.rfind("(") + 1:title.rfind(")")]
             if hasNumbers(name) or len(name) < 3 or len(get_korean(name)) > 0 or name == 'WHOLE' or name == 'PET' or name == 'BQF':
                 if len(get_korean(name)) > 0:
                     korean_name = korean_name + '(' + name + ')'
-                name = translate_korean_to_english(korean_name) + ' ' + spec
-                names.append(name)
-                chinese_name = translate_korean_to_chinese(korean_name) + ' ' + spec
-                chinese_names.append(chinese_name)
-            else:
+                name = translate_korean_to_english(korean_name)
                 names.append(name + ' ' + spec)
-                chinese_name = translate_english_to_chinese(name) + ' ' + spec
-                chinese_names.append(chinese_name)
+                chinese_name = translate_korean_to_chinese(korean_name)
+                chinese_names.append(chinese_name + ' ' + spec)
+            else:
+                names.append(name)
+                chinese_name = translate_english_to_chinese(name)
+                chinese_names.append(chinese_name + ' ' + spec)
 
         if item_soup.find('div', {'id': 'sit_inf_explan'}):
             description = item_soup.find('div', {'id': 'sit_inf_explan'}).get_text()
